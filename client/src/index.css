@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'DM Sans', sans-serif;
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html.dark { color-scheme: dark; }
+html, body, #root { min-height: 100%; }
+body { margin: 0; min-width: 320px; }
+button, input, textarea, select { font: inherit; }
+::selection { background: rgba(249, 115, 22, 0.22); }
+
+.hljs { color: #d6deeb; background: transparent; }
+.hljs-comment, .hljs-quote { color: #718096; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal { color: #c792ea; }
+.hljs-string, .hljs-attr { color: #c3e88d; }
+.hljs-number, .hljs-symbol, .hljs-bullet { color: #f78c6c; }
+.hljs-title, .hljs-function { color: #82aaff; }
+.hljs-built_in, .hljs-type { color: #ffcb6b; }
+
+.modal-backdrop { background: rgba(2, 6, 23, 0.58); backdrop-filter: blur(7px); }
+.custom-scrollbar { scrollbar-width: thin; scrollbar-color: #64748b transparent; }
+.custom-scrollbar::-webkit-scrollbar { width: 7px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #64748b66; border-radius: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+@layer components {
+  .form-input {
+    display: block;
+    width: 100%;
+    min-height: 2.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    background: #fff;
+    padding: 0.5rem 0.75rem;
+    color: #1e293b;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    outline: none;
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  }
+  .form-input::placeholder { color: #94a3b8; }
+  .form-input:focus { border-color: #fb923c; box-shadow: 0 0 0 4px rgb(249 115 22 / 0.1); }
+  .form-input:disabled { cursor: not-allowed; opacity: 0.6; }
+  .dark .form-input { border-color: #334155; background: #0f172a; color: #f1f5f9; }
+  .dark .form-input::placeholder { color: #64748b; }
+  .dark .form-input:focus { border-color: #f97316; }
+}
+
+
+/* Responsive hardening for narrow phones, tablets and landscape layouts. */
+html { scroll-padding-top: 5rem; }
+body { overflow-x: hidden; }
+#root { width: 100%; overflow-x: clip; }
+img, video, canvas, svg { max-width: 100%; }
+pre, code { tab-size: 2; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline-offset: 2px; }
+
+@media (max-width: 380px) {
+  .modal-backdrop { padding-left: 0.5rem; padding-right: 0.5rem; }
+  .modal-backdrop > section,
+  .modal-backdrop > div { max-width: 100%; }
+}
+
+@media (max-width: 640px) {
+  .custom-scrollbar { overscroll-behavior: contain; }
+  input, select, textarea { max-width: 100%; }
+  .form-input { font-size: 16px; } /* Prevent iOS Safari zoom on focus. */
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .modal-backdrop { align-items: flex-start; }
+  .modal-backdrop > div { margin-top: 0.5rem; margin-bottom: 0.5rem; max-height: calc(100dvh - 1rem); }
+}

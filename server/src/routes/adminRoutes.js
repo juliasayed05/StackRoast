@@ -1,0 +1,12 @@
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
+import { requireAdmin } from '../middleware/admin.js';
+import { dashboardStats, listAdminUsers, listAdminPosts, removeAdminPost, toggleAdminResolve } from '../controllers/adminController.js';
+const router = Router();
+router.use(requireAuth, requireAdmin);
+router.get('/dashboard', dashboardStats);
+router.get('/users', listAdminUsers);
+router.get('/posts', listAdminPosts);
+router.delete('/posts/:id', removeAdminPost);
+router.patch('/posts/:id/resolve', toggleAdminResolve);
+export default router;
