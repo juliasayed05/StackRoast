@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
@@ -19,10 +19,17 @@ const userSchema = new mongoose.Schema(
       maxlength: 254,
     },
     passwordHash: { type: String, required: true, select: false },
-    role: { type: String, enum: ['user', 'admin'], default: 'user', index: true },
+    passwordResetToken: { type: String, select: false },
+    passwordResetExpires: { type: Date, select: false },
+    passwordChangedAt: { type: Date, select: false },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+      index: true,
+    },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );
 
-
-export default mongoose.model('User', userSchema);
+export default mongoose.model("User", userSchema);

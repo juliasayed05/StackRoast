@@ -1,19 +1,29 @@
-import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
-import { login, me, register } from '../controllers/authController.js';
-import { requireAuth } from '../middleware/auth.js';
+import { Router } from "express";
+import rateLimit from "express-rate-limit";
+import {
+  login,
+  me,
+  register,
+  forgotPassword,
+  resetPassword,
+} from "../controllers/authController.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 30,
-  standardHeaders: 'draft-7',
+  standardHeaders: "draft-7",
   legacyHeaders: false,
-  message: { message: 'Too many authentication attempts. Please try again later.' },
+  message: {
+    message: "Too many authentication attempts. Please try again later.",
+  },
 });
 
-router.post('/register', authLimiter, register);
-router.post('/login', authLimiter, login);
-router.get('/me', requireAuth, me);
+router.post("/register", authLimiter, register);
+router.post("/login", authLimiter, login);
+router.get("/me", requireAuth, me);
+router.post("/forgot-password", authLimiter, forgotPassword);
+router.post("/reset-password", authLimiter, resetPassword);
 
 export default router;
