@@ -6,6 +6,7 @@ import authRoutes from "./routes/authRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import profileRoutes from "./routes/profileRoutes.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 
 const app = express();
@@ -45,6 +46,9 @@ app.get("/api/health", (_req, res) =>
   res.json({ status: "ok", service: "stackroast-api" }),
 );
 app.use("/api/auth", authRoutes);
+app.use("/api/posts", postRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/profile", profileRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/admin", adminRoutes);

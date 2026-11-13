@@ -6,6 +6,7 @@ import {
   Search,
   Sun,
   TerminalSquare,
+  UserRound,
 } from "lucide-react";
 
 export default function Navbar({
@@ -20,6 +21,7 @@ export default function Navbar({
   onLogout,
   onNewPost,
   onAdmin,
+  onProfile,
 }) {
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl dark:border-slate-800/80 dark:bg-[#080C14]/95">
@@ -117,6 +119,18 @@ export default function Navbar({
                 </p>
               </div>
 
+              {/* Profile Button */}
+              <button
+                type="button"
+                onClick={onProfile}
+                className="flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 px-2.5 text-xs font-bold text-slate-600 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-700 dark:text-slate-200 dark:hover:border-orange-500/40 dark:hover:bg-orange-500/10 dark:hover:text-orange-400"
+                title="View your profile"
+              >
+                <UserRound size={16} />
+                <span className="hidden md:inline">Profile</span>
+              </button>
+
+              {/* Logout Button */}
               <button
                 type="button"
                 onClick={onLogout}

@@ -16,6 +16,7 @@ import Toast from "./components/Toast.jsx";
 import AdminDashboard from "./components/AdminDashboard.jsx";
 import ResetPasswordPage from "./components/ResetPasswordPage.jsx";
 import VerifyEmailPage from "./pages/VerifyEmailPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
 import { api, TOKEN_KEY_NAME } from "./lib/api.js";
 
 const TAGS = [
@@ -27,6 +28,7 @@ const TAGS = [
   "UI/UX",
   "Architecture",
 ];
+
 const SORTS = [
   ["newest", "Newest"],
   ["top", "Most roasted"],
@@ -43,6 +45,7 @@ function getInitialTheme() {
 
 export default function App() {
   const [theme, setTheme] = useState(getInitialTheme);
+  const [profileView, setProfileView] = useState(false);
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [tag, setTag] = useState("All");
@@ -78,10 +81,13 @@ export default function App() {
   useEffect(() => {
     const media = window.matchMedia?.("(prefers-color-scheme: dark)");
     if (!media) return undefined;
+
     const onSystemThemeChange = (event) => {
-      if (!window.localStorage.getItem("stackroast_theme"))
+      if (!window.localStorage.getItem("stackroast_theme")) {
         setTheme(event.matches ? "dark" : "light");
+      }
     };
+
     media.addEventListener?.("change", onSystemThemeChange);
     return () => media.removeEventListener?.("change", onSystemThemeChange);
   }, []);
@@ -89,6 +95,7 @@ export default function App() {
   useEffect(() => {
     let active = true;
     const storedToken = window.localStorage.getItem(TOKEN_KEY_NAME);
+
     if (!storedToken) {
       setUser(null);
       setToken(null);
@@ -109,9 +116,12 @@ export default function App() {
         window.localStorage.removeItem(TOKEN_KEY_NAME);
         setUser(null);
         setToken(null);
-        if (error.status === 401)
+
+        if (error.status === 401) {
           showToast("Session expired. Please sign in again.", "error");
+        }
       });
+
     return () => {
       active = false;
     };
@@ -125,8 +135,10 @@ export default function App() {
       sort,
       status,
     });
+
     setLoading(true);
     setFeedError("");
+
     api
       .get(`/posts?${params.toString()}`)
       .then((result) => {
@@ -141,6 +153,7 @@ export default function App() {
       .finally(() => {
         if (active) setLoading(false);
       });
+
     return () => {
       active = false;
     };
@@ -168,6 +181,7 @@ export default function App() {
       setAuthMode("login");
       return;
     }
+
     setCreateOpen(true);
   }
 
@@ -176,6 +190,7 @@ export default function App() {
     setToken(null);
     setUser(null);
     setAdminView(false);
+    setProfileView(false);
     showToast("You have been logged out.", "info");
     setFeedVersion((current) => current + 1);
   }
@@ -244,6 +259,7 @@ export default function App() {
       ).length,
     [posts],
   );
+
   if (window.location.pathname === "/reset-password") {
     return <ResetPasswordPage />;
   }
@@ -272,6 +288,12 @@ export default function App() {
         user={user}
         onLogin={() => setAuthMode("login")}
         onRegister={() => setAuthMode("register")}
+        onProfile={() => {
+          if (user) {
+            setAdminView(false);
+            setProfileView(true);
+          }
+        }}
         onLogout={logout}
         onNewPost={openNewPost}
         onAdmin={() => setAdminView(true)}
@@ -281,6 +303,17 @@ export default function App() {
         <AdminDashboard
           onBack={() => setAdminView(false)}
           onToast={showToast}
+        />
+      ) : profileView && user ? (
+        <ProfilePage
+          onBack={() => setProfileView(false)}
+          onToast={showToast}
+          onProfileUpdated={(updatedProfile) => {
+            setUser((current) => ({
+              ...current,
+              ...updatedProfile,
+            }));
+          }}
         />
       ) : (
         <main className="mx-auto max-w-[1440px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 lg:pt-10">
@@ -299,6 +332,7 @@ export default function App() {
                 feedback, and turn rough edges into better software.
               </p>
             </div>
+
             <div className="grid grid-cols-3 gap-2 lg:w-[340px]">
               <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 dark:border-slate-800 dark:bg-[#111827]">
                 <div className="flex items-center gap-1.5 text-orange-500">
@@ -312,6 +346,7 @@ export default function App() {
                 </p>
                 <p className="text-[10px] text-slate-400">roasts</p>
               </div>
+
               <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 dark:border-slate-800 dark:bg-[#111827]">
                 <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -324,6 +359,7 @@ export default function App() {
                 </p>
                 <p className="text-[10px] text-slate-400">active in view</p>
               </div>
+
               <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 dark:border-slate-800 dark:bg-[#111827]">
                 <div className="flex items-center gap-1.5 text-sky-600 dark:text-sky-400">
                   <ShieldCheck size={13} />
@@ -348,12 +384,17 @@ export default function App() {
                     type="button"
                     onClick={() => setTag(item)}
                     aria-pressed={tag === item}
-                    className={`rounded-lg px-3 py-2 text-xs font-bold transition ${tag === item ? "bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900" : "text-slate-500 hover:bg-slate-200/70 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"}`}
+                    className={`rounded-lg px-3 py-2 text-xs font-bold transition ${
+                      tag === item
+                        ? "bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900"
+                        : "text-slate-500 hover:bg-slate-200/70 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                    }`}
                   >
                     {item}
                   </button>
                 ))}
               </div>
+
               <div className="flex flex-wrap items-center gap-2">
                 <label className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 dark:border-slate-800 dark:bg-[#111827]">
                   <SlidersHorizontal size={13} className="text-slate-400" />
@@ -373,6 +414,7 @@ export default function App() {
                     ))}
                   </select>
                 </label>
+
                 <div
                   className="flex h-9 rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-[#111827]"
                   role="group"
@@ -384,7 +426,11 @@ export default function App() {
                       type="button"
                       onClick={() => setStatus(value)}
                       aria-pressed={status === value}
-                      className={`rounded-md px-3 text-[11px] font-bold capitalize transition ${status === value ? "bg-orange-500 text-white" : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"}`}
+                      className={`rounded-md px-3 text-[11px] font-bold capitalize transition ${
+                        status === value
+                          ? "bg-orange-500 text-white"
+                          : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+                      }`}
                     >
                       {value}
                     </button>
@@ -500,6 +546,7 @@ export default function App() {
           onRequireAuth={() => setAuthMode("login")}
         />
       )}
+
       {selectedPostId && (
         <PostDetailModal
           postId={selectedPostId}
@@ -511,6 +558,7 @@ export default function App() {
           onDeleted={handlePostDeleted}
         />
       )}
+
       {authMode && (
         <AuthModal
           mode={authMode}
@@ -519,6 +567,7 @@ export default function App() {
           onModeChange={setAuthMode}
         />
       )}
+
       <Toast toasts={toasts} />
     </div>
   );

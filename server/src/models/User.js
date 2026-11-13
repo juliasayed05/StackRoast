@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
+    // Account information
     username: {
       type: String,
       required: true,
@@ -26,16 +27,95 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
+    // Profile information
+    displayName: {
+      type: String,
+      trim: true,
+      maxlength: 60,
+      default: "",
+    },
+
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: "",
+    },
+
+    profileImage: {
+      type: String,
+      default: "",
+    },
+
+    location: {
+      type: String,
+      trim: true,
+      maxlength: 100,
+      default: "",
+    },
+
+    jobTitle: {
+      type: String,
+      trim: true,
+      maxlength: 100,
+      default: "",
+    },
+
+    website: {
+      type: String,
+      trim: true,
+      maxlength: 200,
+      default: "",
+    },
+
+    portfolioUrl: {
+      type: String,
+      trim: true,
+      maxlength: 200,
+      default: "",
+    },
+
+    githubUrl: {
+      type: String,
+      trim: true,
+      maxlength: 200,
+      default: "",
+    },
+
+    linkedinUrl: {
+      type: String,
+      trim: true,
+      maxlength: 200,
+      default: "",
+    },
+
+    skills: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: (skills) => skills.length <= 20,
+        message: "You can add up to 20 skills.",
+      },
+    },
+
+    experienceLevel: {
+      type: String,
+      enum: ["beginner", "intermediate", "advanced", "professional", ""],
+      default: "",
+    },
+
     // Email verification
     isEmailVerified: {
       type: Boolean,
       default: false,
       index: true,
     },
+
     emailVerificationToken: {
       type: String,
       select: false,
     },
+
     emailVerificationExpires: {
       type: Date,
       select: false,
@@ -46,15 +126,18 @@ const userSchema = new mongoose.Schema(
       type: String,
       select: false,
     },
+
     passwordResetExpires: {
       type: Date,
       select: false,
     },
+
     passwordChangedAt: {
       type: Date,
       select: false,
     },
 
+    // User role
     role: {
       type: String,
       enum: ["user", "admin"],
