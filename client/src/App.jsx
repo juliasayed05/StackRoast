@@ -45,7 +45,9 @@ function getInitialTheme() {
 
 export default function App() {
   const [theme, setTheme] = useState(getInitialTheme);
-  const [profileView, setProfileView] = useState(false);
+  const [profileView, setProfileView] = useState(
+    () => sessionStorage.getItem("stackroast_current_view") === "profile",
+  );
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [tag, setTag] = useState("All");
@@ -185,15 +187,14 @@ export default function App() {
     setCreateOpen(true);
   }
 
-  function logout() {
-    window.localStorage.removeItem(TOKEN_KEY_NAME);
-    setToken(null);
+  const handleLogout = () => {
+    localStorage.removeItem("stackroast_token");
+    sessionStorage.removeItem("stackroast_current_view");
+
     setUser(null);
-    setAdminView(false);
     setProfileView(false);
-    showToast("You have been logged out.", "info");
-    setFeedVersion((current) => current + 1);
-  }
+    setAdminView(false);
+  };
 
   async function upvotePost(postId) {
     if (!user) {
@@ -268,6 +269,15 @@ export default function App() {
     return <VerifyEmailPage />;
   }
 
+  const logout = () => {
+    localStorage.removeItem("stackroast_token");
+    sessionStorage.removeItem("stackroast_current_view");
+
+    setUser(null);
+    setProfileView(false);
+    setAdminView(false);
+  };
+
   return (
     <div
       id="top"
@@ -292,6 +302,7 @@ export default function App() {
           if (user) {
             setAdminView(false);
             setProfileView(true);
+            sessionStorage.setItem("stackroast_current_view", "profile");
           }
         }}
         onLogout={logout}
@@ -306,7 +317,10 @@ export default function App() {
         />
       ) : profileView && user ? (
         <ProfilePage
-          onBack={() => setProfileView(false)}
+          onBack={() => {
+            setProfileView(false);
+            sessionStorage.removeItem("stackroast_current_view");
+          }}
           onToast={showToast}
           onProfileUpdated={(updatedProfile) => {
             setUser((current) => ({
