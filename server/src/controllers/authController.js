@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 import PendingUser from "../models/PendingUser.js";
 import User from "../models/User.js";
@@ -34,21 +34,41 @@ function publicUser(user) {
 }
 
 // ============================================
-// EMAIL TRANSPORTER
+// RESEND EMAIL SERVICE
 // ============================================
 
-function createMailTransporter() {
-  if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
-    throw new Error("Email configuration is missing.");
+async function sendEmail({ to, subject, text, html }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.MAIL_FROM;
+
+  if (!apiKey || !from) {
+    throw new Error(
+      "Resend configuration is missing. Check RESEND_API_KEY and MAIL_FROM.",
+    );
   }
 
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASS.replace(/\s/g, ""),
-    },
+  const resend = new Resend(apiKey);
+
+  const { data, error } = await resend.emails.send({
+    from,
+    to,
+    subject,
+    text,
+    html,
   });
+
+  if (error) {
+    console.error("Resend API error:", error);
+    throw new Error(error.message || "Email delivery failed.");
+  }
+
+  console.log("Email sent successfully:", {
+    id: data?.id,
+    to,
+    subject,
+  });
+
+  return data;
 }
 
 // ============================================
@@ -62,12 +82,9 @@ async function sendVerificationEmail(user, verificationToken) {
     throw new Error("CLIENT_ORIGIN is missing.");
   }
 
-  const verificationUrl = `${clientOrigin}/verify-email?token=${verificationToken}`;
+  const verificationUrl = `${clientOrigin.replace(/\/$/, "")}/verify-email?token=${verificationToken}`;
 
-  const transporter = createMailTransporter();
-
-  const info = await transporter.sendMail({
-    from: `"StackRoast" <${process.env.MAIL_USER}>`,
+  await sendEmail({
     to: user.email,
     subject: "Verify your StackRoast email address",
 
@@ -103,13 +120,6 @@ If you did not create this account, you can ignore this email.`,
         </p>
       </div>
     `,
-  });
-
-  console.log("Verification email delivery result:", {
-    messageId: info.messageId,
-    accepted: info.accepted,
-    rejected: info.rejected,
-    response: info.response,
   });
 }
 
@@ -210,7 +220,7 @@ export const register = asyncHandler(async (req, res) => {
     verificationExpires: new Date(Date.now() + 24 * 60 * 60 * 1000),
   });
 
-  // Send verification email
+  // Send verification email using Resend
   try {
     await sendVerificationEmail(pendingUser, verificationToken);
   } catch (error) {
@@ -307,9 +317,7 @@ export const resendVerificationEmail = asyncHandler(async (req, res) => {
     message: GENERIC_VERIFICATION_MESSAGE,
   };
 
-  const pendingUser = await PendingUser.findOne({
-    email,
-  });
+  const pendingUser = await PendingUser.findOne({ email });
 
   if (!pendingUser) {
     return res.json(response);
@@ -358,9 +366,7 @@ export const login = asyncHandler(async (req, res) => {
     throw new AppError("Email and password are required.", 400);
   }
 
-  const user = await User.findOne({
-    email,
-  }).select("+passwordHash");
+  const user = await User.findOne({ email }).select("+passwordHash");
 
   const passwordMatches = user
     ? await bcrypt.compare(password, user.passwordHash)
@@ -412,6 +418,13 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     return res.json(response);
   }
 
+  const clientOrigin = process.env.CLIENT_ORIGIN;
+
+  if (!clientOrigin) {
+    throw new AppError("CLIENT_ORIGIN is missing.", 500);
+  }
+
+  // Generate reset token
   const resetToken = crypto.randomBytes(32).toString("hex");
 
   user.passwordResetToken = crypto
@@ -423,19 +436,11 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
   await user.save();
 
-  const clientOrigin = process.env.CLIENT_ORIGIN;
-
-  if (!clientOrigin) {
-    throw new AppError("CLIENT_ORIGIN is missing.", 500);
-  }
-
-  const resetUrl = `${clientOrigin}/reset-password?token=${resetToken}`;
+  const resetUrl = `${clientOrigin.replace(/\/$/, "")}/reset-password?token=${resetToken}`;
 
   try {
-    const transporter = createMailTransporter();
-
-    const info = await transporter.sendMail({
-      from: `"StackRoast" <${process.env.MAIL_USER}>`,
+    // Send password reset email using Resend
+    await sendEmail({
       to: user.email,
       subject: "Reset your StackRoast password",
 
@@ -472,16 +477,10 @@ If you did not request this, ignore this email.`,
         </div>
       `,
     });
-
-    console.log("Password reset email delivery result:", {
-      messageId: info.messageId,
-      accepted: info.accepted,
-      rejected: info.rejected,
-      response: info.response,
-    });
   } catch (error) {
     console.error("Password reset email error:", error);
 
+    // Clear reset token if email sending fails
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
 
@@ -526,6 +525,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
   }
 
   user.passwordHash = await bcrypt.hash(password, 12);
+
   user.passwordResetToken = undefined;
   user.passwordResetExpires = undefined;
   user.passwordChangedAt = new Date();
