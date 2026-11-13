@@ -1,7 +1,5 @@
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
-import { Resend } from "resend";
-
 import PendingUser from "../models/PendingUser.js";
 import User from "../models/User.js";
 
@@ -33,42 +31,68 @@ function publicUser(user) {
   };
 }
 
-// ============================================
-// RESEND EMAIL SERVICE
-// ============================================
+/* ============================================
+   BREVO TRANSACTIONAL EMAIL SERVICE
+============================================ */
 
 async function sendEmail({ to, subject, text, html }) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.MAIL_FROM;
+  const apiKey = process.env.BREVO_API_KEY;
+  const senderEmail = process.env.BREVO_SENDER_EMAIL;
+  const senderName = process.env.BREVO_SENDER_NAME || "StackRoast";
 
-  if (!apiKey || !from) {
+  if (!apiKey || !senderEmail) {
     throw new Error(
-      "Resend configuration is missing. Check RESEND_API_KEY and MAIL_FROM.",
+      "Brevo configuration is missing. Check BREVO_API_KEY and BREVO_SENDER_EMAIL.",
     );
   }
 
-  const resend = new Resend(apiKey);
-
-  const { data, error } = await resend.emails.send({
-    from,
-    to,
-    subject,
-    text,
-    html,
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "api-key": apiKey,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      sender: {
+        name: senderName,
+        email: senderEmail,
+      },
+      to: [{ email: to }],
+      subject,
+      textContent: text,
+      htmlContent: html,
+    }),
   });
 
-  if (error) {
-    console.error("Resend API error:", error);
-    throw new Error(error.message || "Email delivery failed.");
+  const responseText = await response.text();
+
+  let result = {};
+
+  try {
+    result = responseText ? JSON.parse(responseText) : {};
+  } catch {
+    result = { message: responseText };
   }
 
-  console.log("Email sent successfully:", {
-    id: data?.id,
+  if (!response.ok) {
+    console.error("Brevo API error:", {
+      status: response.status,
+      message: result.message || result,
+    });
+
+    throw new Error(
+      result.message || `Brevo email request failed (${response.status}).`,
+    );
+  }
+
+  console.log("Brevo accepted email:", {
+    messageId: result.messageId,
     to,
     subject,
   });
 
-  return data;
+  return result;
 }
 
 // ============================================
