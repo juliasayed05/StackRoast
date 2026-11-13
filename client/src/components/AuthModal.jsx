@@ -29,18 +29,23 @@ export default function AuthModal({
   const [resetSent, setResetSent] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
 
   const isRegister = mode === "register";
 
   function update(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
     setError("");
+    setResendMessage("");
   }
 
   async function submit(event) {
     event.preventDefault();
     setBusy(true);
     setError("");
+    setResendMessage("");
+    setPendingVerification(false);
 
     try {
       const result = await api.post(
@@ -65,6 +70,11 @@ export default function AuthModal({
       onAuthenticated(result);
     } catch (requestError) {
       setError(requestError.message);
+      const message = String(requestError.message || "").toLowerCase();
+      if (isRegister && message.includes("pending")) {
+        setVerificationEmail(form.email.trim().toLowerCase());
+        setPendingVerification(true);
+      }
     } finally {
       setBusy(false);
     }
@@ -89,7 +99,7 @@ export default function AuthModal({
     }
   }
   async function resendExistingVerification() {
-    const email = form.email.trim().toLowerCase();
+    const email = (verificationEmail || form.email).trim().toLowerCase();
 
     if (!email) {
       setError("Please enter your email address first.");
@@ -98,13 +108,15 @@ export default function AuthModal({
 
     setBusy(true);
     setError("");
+    setResendMessage("");
 
     try {
       await api.post("/auth/resend-verification", { email });
-
-      setError(
-        "If an unverified account exists, a verification email has been sent. Check your inbox and spam folder.",
+      setVerificationEmail(email);
+      setResendMessage(
+        "If an unverified account exists, a new verification email has been sent. Check your inbox and spam folder.",
       );
+      setPendingVerification(false);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -141,6 +153,8 @@ export default function AuthModal({
     setResetSent(false);
     setVerificationSent(false);
     setVerificationEmail("");
+    setPendingVerification(false);
+    setResendMessage("");
     setError("");
     onModeChange("login");
   }
@@ -416,11 +430,33 @@ export default function AuthModal({
               )}
 
               {error && (
+                <div className="space-y-2">
+                  <p
+                    className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium leading-5 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300"
+                    role="alert"
+                  >
+                    {error}
+                  </p>
+
+                  {isRegister && pendingVerification && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={resendExistingVerification}
+                      className="flex h-11 w-full items-center justify-center rounded-xl border border-orange-500 text-sm font-bold text-orange-600 transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60 dark:text-orange-400 dark:hover:bg-orange-500/10"
+                    >
+                      {busy ? "Sending..." : "Resend verification email"}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {resendMessage && (
                 <p
-                  className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium leading-5 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300"
-                  role="alert"
+                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium leading-5 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300"
+                  role="status"
                 >
-                  {error}
+                  {resendMessage}
                 </p>
               )}
 
