@@ -15,6 +15,7 @@ import PostCard from "./components/PostCard.jsx";
 import Toast from "./components/Toast.jsx";
 import AdminDashboard from "./components/AdminDashboard.jsx";
 import ResetPasswordPage from "./components/ResetPasswordPage.jsx";
+import VerifyEmailPage from "./pages/VerifyEmailPage.jsx";
 import { api, TOKEN_KEY_NAME } from "./lib/api.js";
 
 const TAGS = [
@@ -43,7 +44,7 @@ function getInitialTheme() {
 export default function App() {
   const [theme, setTheme] = useState(getInitialTheme);
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [tag, setTag] = useState("All");
   const [sort, setSort] = useState("newest");
   const [status, setStatus] = useState("active");
@@ -86,14 +87,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(
-      () => setDebouncedSearch(search.trim()),
-      280,
-    );
-    return () => window.clearTimeout(timer);
-  }, [search]);
-
-  useEffect(() => {
     let active = true;
     const storedToken = window.localStorage.getItem(TOKEN_KEY_NAME);
     if (!storedToken) {
@@ -127,7 +120,7 @@ export default function App() {
   useEffect(() => {
     let active = true;
     const params = new URLSearchParams({
-      search: debouncedSearch,
+      search: appliedSearch,
       tag: tag === "All" ? "all" : tag,
       sort,
       status,
@@ -151,7 +144,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [debouncedSearch, tag, sort, status, feedVersion, token]);
+  }, [appliedSearch, tag, sort, status, feedVersion, token]);
 
   const toggleTheme = useCallback(() => {
     setTheme((current) => {
@@ -192,11 +185,39 @@ export default function App() {
       setAuthMode("login");
       return;
     }
+
+    // Save the previous state so we can roll back if the API fails.
+    const previousPosts = posts;
+
+    // Update the UI immediately.
+    setPosts((currentPosts) =>
+      currentPosts.map((post) => {
+        if (post.id !== postId) return post;
+
+        const wasUpvoted = post.hasUpvoted;
+
+        return {
+          ...post,
+          hasUpvoted: !wasUpvoted,
+          upvoteCount: Math.max(
+            0,
+            (post.upvoteCount || 0) + (wasUpvoted ? -1 : 1),
+          ),
+        };
+      }),
+    );
+
     try {
       await api.patch(`/posts/${postId}/upvote`);
-      setFeedVersion((current) => current + 1);
     } catch (error) {
-      if (error.status === 401) setAuthMode("login");
+      // Restore the previous state if the request fails.
+      setPosts(previousPosts);
+
+      if (error.status === 401) {
+        setAuthMode("login");
+        return;
+      }
+
       showToast(error.message, "error");
     }
   }
@@ -227,6 +248,10 @@ export default function App() {
     return <ResetPasswordPage />;
   }
 
+  if (window.location.pathname === "/verify-email") {
+    return <VerifyEmailPage />;
+  }
+
   return (
     <div
       id="top"
@@ -234,7 +259,14 @@ export default function App() {
     >
       <Navbar
         search={search}
-        onSearch={setSearch}
+        onSearch={(value) => {
+          setSearch(value);
+
+          if (!value.trim()) {
+            setAppliedSearch("");
+          }
+        }}
+        onSearchSubmit={() => setAppliedSearch(search.trim())}
         theme={theme}
         onToggleTheme={toggleTheme}
         user={user}
@@ -367,8 +399,8 @@ export default function App() {
                   {status === "active" ? "Live roasts" : "Expired roasts"}
                 </h2>
                 <p className="mt-0.5 text-[11px] text-slate-400">
-                  {debouncedSearch
-                    ? `Results for “${debouncedSearch}”`
+                  {appliedSearch
+                    ? `Results for “${appliedSearch}”`
                     : "Real projects. Real feedback. No sugar-coating."}
                 </p>
               </div>
@@ -419,7 +451,7 @@ export default function App() {
                     : "No expired roasts found."}
                 </h3>
                 <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-slate-500 dark:text-slate-400">
-                  {debouncedSearch || tag !== "All"
+                  {appliedSearch || tag !== "All"
                     ? "Try a different search or tag filter."
                     : "Be the first to share a project and invite the community to review it."}
                 </p>

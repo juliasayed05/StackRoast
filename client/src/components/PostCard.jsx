@@ -41,7 +41,7 @@ export default function PostCard({
           onOpen(post.id);
         }
       }}
-      className="group box-border w-full min-w-0 max-w-full cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-soft transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-400 dark:border-slate-800 dark:bg-[#111827] dark:hover:border-slate-700 sm:p-5 sm:overflow-visible"
+      className="group box-border w-full min-w-0 max-w-full cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-soft transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-400 dark:border-slate-800 dark:bg-[#111827] dark:hover:border-slate-700 sm:p-5"
     >
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:flex-nowrap sm:gap-3">
         <div className="flex flex-wrap items-center gap-2">

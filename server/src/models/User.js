@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema(
       minlength: 3,
       maxlength: 30,
     },
+
     email: {
       type: String,
       required: true,
@@ -18,10 +19,42 @@ const userSchema = new mongoose.Schema(
       trim: true,
       maxlength: 254,
     },
-    passwordHash: { type: String, required: true, select: false },
-    passwordResetToken: { type: String, select: false },
-    passwordResetExpires: { type: Date, select: false },
-    passwordChangedAt: { type: Date, select: false },
+
+    passwordHash: {
+      type: String,
+      required: true,
+      select: false,
+    },
+
+    // Email verification
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    emailVerificationToken: {
+      type: String,
+      select: false,
+    },
+    emailVerificationExpires: {
+      type: Date,
+      select: false,
+    },
+
+    // Password reset
+    passwordResetToken: {
+      type: String,
+      select: false,
+    },
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+    },
+    passwordChangedAt: {
+      type: Date,
+      select: false,
+    },
+
     role: {
       type: String,
       enum: ["user", "admin"],
@@ -29,7 +62,12 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
   },
-  { timestamps: { createdAt: true, updatedAt: false } },
+  {
+    timestamps: {
+      createdAt: true,
+      updatedAt: false,
+    },
+  },
 );
 
 export default mongoose.model("User", userSchema);

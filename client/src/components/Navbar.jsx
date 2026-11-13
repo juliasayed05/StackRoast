@@ -11,6 +11,7 @@ import {
 export default function Navbar({
   search,
   onSearch,
+  onSearchSubmit,
   theme,
   onToggleTheme,
   user,
@@ -39,24 +40,35 @@ export default function Navbar({
         </a>
 
         {/* Desktop Search */}
-        <div className="relative mx-auto hidden max-w-[510px] flex-1 md:block">
-          <Search
-            size={16}
-            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-          />
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSearchSubmit();
+          }}
+          className="relative mx-auto hidden max-w-[510px] flex-1 items-center gap-2 md:flex"
+        >
+          <div className="relative min-w-0 flex-1">
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+            />
 
-          <input
-            value={search}
-            onChange={(event) => onSearch(event.target.value)}
-            placeholder="Search roasts, code, ideas..."
-            className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-500/10 dark:border-slate-700/80 dark:bg-[#111827] dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-orange-500 dark:focus:bg-[#111827]"
-            aria-label="Search roasts"
-          />
+            <input
+              value={search}
+              onChange={(event) => onSearch(event.target.value)}
+              placeholder="Search roasts, code, ideas..."
+              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-orange-400 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:placeholder:text-slate-500"
+              aria-label="Search roasts"
+            />
+          </div>
 
-          <span className="absolute right-3 top-1/2 hidden -translate-y-1/2 font-label text-[10px] text-slate-400 dark:text-slate-500 lg:block">
-            LIVE SEARCH
-          </span>
-        </div>
+          <button
+            type="submit"
+            className="h-10 shrink-0 rounded-xl bg-orange-500 px-4 text-xs font-bold text-white transition hover:bg-orange-600"
+          >
+            Search
+          </button>
+        </form>
 
         {/* Actions */}
         <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
@@ -139,20 +151,35 @@ export default function Navbar({
 
       {/* Mobile Search */}
       <div className="px-3 pb-3 md:hidden sm:px-6">
-        <div className="relative">
-          <Search
-            size={15}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-          />
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSearchSubmit();
+          }}
+          className="flex gap-2"
+        >
+          <div className="relative min-w-0 flex-1">
+            <Search
+              size={15}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
 
-          <input
-            value={search}
-            onChange={(event) => onSearch(event.target.value)}
-            placeholder="Search roasts, code, ideas..."
-            aria-label="Search roasts"
-            className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-orange-400 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-orange-500"
-          />
-        </div>
+            <input
+              value={search}
+              onChange={(event) => onSearch(event.target.value)}
+              placeholder="Search roasts, code, ideas..."
+              aria-label="Search roasts"
+              className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-orange-400 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:placeholder:text-slate-500"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="h-9 shrink-0 rounded-xl bg-orange-500 px-3 text-xs font-bold text-white transition hover:bg-orange-600"
+          >
+            Search
+          </button>
+        </form>
       </div>
     </header>
   );
