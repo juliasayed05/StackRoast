@@ -400,6 +400,14 @@ export const login = asyncHandler(async (req, res) => {
     throw new AppError("Email or password is incorrect.", 401);
   }
 
+  // Block suspended users from logging in
+  if (user.isSuspended) {
+    throw new AppError(
+      "Your account has been suspended. Please contact StackRoast support.",
+      403,
+    );
+  }
+
   res.json({
     token: signAuthToken(user._id),
     user: publicUser(user),

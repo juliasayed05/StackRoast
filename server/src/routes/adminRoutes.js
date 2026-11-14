@@ -10,6 +10,7 @@ import {
   removeAdminPost,
   toggleAdminResolve,
   deleteAdminUser,
+  toggleAdminUserSuspension,
 } from "../controllers/adminController.js";
 
 const router = Router();
@@ -22,6 +23,7 @@ router.get("/dashboard", dashboardStats);
 
 // User management
 router.get("/users", listAdminUsers);
+router.patch("/users/:id/suspension", toggleAdminUserSuspension);
 router.delete("/users/:id", deleteAdminUser);
 
 // Post management

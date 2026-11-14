@@ -144,6 +144,18 @@ const userSchema = new mongoose.Schema(
       default: "user",
       index: true,
     },
+
+    // Account suspension
+    isSuspended: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    suspendedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: {
