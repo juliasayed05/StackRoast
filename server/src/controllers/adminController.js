@@ -72,13 +72,28 @@ export const dashboardStats = asyncHandler(async (_req, res) => {
 // LIST USERS
 // ============================================
 
+// ============================================
+// LIST USERS
+// ============================================
+
 export const listAdminUsers = asyncHandler(async (req, res) => {
   const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
   const limit = 20;
   const search = String(req.query.search || "").trim();
+  const status = String(req.query.status || "all").toLowerCase();
 
   const filter = {};
 
+  // Filter by account status
+  if (status === "active") {
+    filter.isSuspended = { $ne: true };
+  } else if (status === "suspended") {
+    filter.isSuspended = true;
+  } else if (status !== "all") {
+    throw new AppError("Invalid user status filter.", 400);
+  }
+
+  // Search by username, email, or display name
   if (search) {
     const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const regex = new RegExp(escapedSearch, "i");

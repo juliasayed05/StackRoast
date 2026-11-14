@@ -42,6 +42,7 @@ export default function AdminDashboard({ onBack, onToast }) {
   const [deletingUserId, setDeletingUserId] = useState(null);
   const [suspendingUserId, setSuspendingUserId] = useState(null);
   const [userSearch, setUserSearch] = useState("");
+  const [userStatus, setUserStatus] = useState("all");
   const [userPage, setUserPage] = useState(1);
   const [userPages, setUserPages] = useState(1);
   const [userTotal, setUserTotal] = useState(0);
@@ -53,7 +54,7 @@ export default function AdminDashboard({ onBack, onToast }) {
     try {
       const [summary, userResult, postResult] = await Promise.all([
         api.get("/admin/dashboard"),
-        api.get("/admin/users?page=1"),
+        api.get("/admin/users?page=1&status=all"),
         api.get(`/admin/posts?page=1&status=${postsStatus}`),
       ]);
       setData(summary);
@@ -127,7 +128,7 @@ export default function AdminDashboard({ onBack, onToast }) {
 
       onToast(`User @${username} deleted successfully.`, "success");
 
-      await load();
+      await searchUsers(userSearch, userPage);
     } catch (err) {
       onToast(err.message || "Failed to delete user.", "error");
     } finally {
@@ -187,13 +188,14 @@ export default function AdminDashboard({ onBack, onToast }) {
     ["Resolved", stats?.resolvedPosts, CheckCircle2],
   ];
   const searchUsers = useCallback(
-    async (search = userSearch, page = 1) => {
+    async (search = userSearch, page = 1, status = userStatus) => {
       setSearchingUsers(true);
 
       try {
         const params = new URLSearchParams({
           search: search.trim(),
           page: String(page),
+          status,
         });
 
         const result = await api.get(`/admin/users?${params.toString()}`);
@@ -208,7 +210,7 @@ export default function AdminDashboard({ onBack, onToast }) {
         setSearchingUsers(false);
       }
     },
-    [userSearch, onToast],
+    [userSearch, userStatus, onToast],
   );
 
   return (
@@ -540,6 +542,36 @@ export default function AdminDashboard({ onBack, onToast }) {
                   </button>
                 </form>
               </div>
+
+              <div
+                className="mb-5 flex flex-wrap gap-2"
+                aria-label="Filter users by account status"
+              >
+                {[
+                  ["all", "All Users"],
+                  ["active", "Active Users"],
+                  ["suspended", "Suspended Users"],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setUserStatus(value);
+                      searchUsers(userSearch, 1, value);
+                    }}
+                    disabled={searchingUsers}
+                    aria-pressed={userStatus === value}
+                    className={`min-h-9 rounded-lg px-3 py-2 text-xs font-bold disabled:opacity-50 ${
+                      userStatus === value
+                        ? "bg-orange-500 text-white"
+                        : "border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
               <div className="space-y-3 sm:hidden">
                 {users.map((u) => (
                   <article
