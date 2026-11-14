@@ -202,10 +202,8 @@ export default function App() {
       return;
     }
 
-    // Save the previous state so we can roll back if the API fails.
     const previousPosts = posts;
 
-    // Update the UI immediately.
     setPosts((currentPosts) =>
       currentPosts.map((post) => {
         if (post.id !== postId) return post;
@@ -226,7 +224,6 @@ export default function App() {
     try {
       await api.patch(`/posts/${postId}/upvote`);
     } catch (error) {
-      // Restore the previous state if the request fails.
       setPosts(previousPosts);
 
       if (error.status === 401) {
@@ -308,6 +305,12 @@ export default function App() {
         onLogout={logout}
         onNewPost={openNewPost}
         onAdmin={() => setAdminView(true)}
+        onOpenPost={(postId) => {
+          setAdminView(false);
+          setProfileView(false);
+          sessionStorage.removeItem("stackroast_current_view");
+          setSelectedPostId(postId);
+        }}
       />
 
       {adminView && user?.isAdmin ? (

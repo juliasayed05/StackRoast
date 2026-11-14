@@ -4,6 +4,7 @@ import Comment, { FEEDBACK_TYPES } from "../models/Comment.js";
 import AppError from "../utils/AppError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { hashUserId, matchesUserHash } from "../utils/ownerHash.js";
+import Notification from "../models/Notification.js";
 
 const EXPIRY_HOURS = { "1h": 1, "12h": 12, "24h": 24, "48h": 48 };
 const SORTS = ["newest", "top", "expiring"];
@@ -246,9 +247,14 @@ export const createPost = asyncHandler(async (req, res) => {
 });
 
 export const togglePostUpvote = asyncHandler(async (req, res) => {
-  const post = await Post.findById(req.params.id).select("_id upvotes");
+  const post = await Post.findById(req.params.id).select(
+    "_id authorId upvotes",
+  );
+
   if (!post) throw new AppError("Post not found.", 404);
+
   const alreadyVoted = post.upvotes.some((id) => id.equals(req.user._id));
+
   const updated = await Post.findByIdAndUpdate(
     post._id,
     alreadyVoted
@@ -256,7 +262,24 @@ export const togglePostUpvote = asyncHandler(async (req, res) => {
       : { $addToSet: { upvotes: req.user._id } },
     { new: true },
   ).select("upvotes");
-  res.json({ upvoteCount: updated.upvotes.length, hasUpvoted: !alreadyVoted });
+
+  if (!alreadyVoted && post.authorId && !post.authorId.equals(req.user._id)) {
+    try {
+      await Notification.create({
+        recipientId: post.authorId,
+        actorId: req.user._id,
+        type: "post_upvote",
+        postId: post._id,
+      });
+    } catch (error) {
+      console.error("Post upvote notification failed:", error);
+    }
+  }
+
+  res.json({
+    upvoteCount: updated.upvotes.length,
+    hasUpvoted: !alreadyVoted,
+  });
 });
 
 export const toggleResolved = asyncHandler(async (req, res) => {

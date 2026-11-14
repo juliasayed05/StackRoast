@@ -1,15 +1,51 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Bell,
+  Check,
+  CheckCheck,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   Moon,
   Plus,
   Search,
   Sun,
   TerminalSquare,
+  ThumbsUp,
+  Trash2,
   UserRound,
   X,
 } from "lucide-react";
+import { api } from "../lib/api.js";
+
+function getNotificationMessage(notification) {
+  const actor = notification.actor?.label || "Someone";
+
+  switch (notification.type) {
+    case "post_comment":
+      return `${actor} commented on your roast.`;
+    case "post_upvote":
+      return `${actor} upvoted your roast.`;
+    case "comment_upvote":
+      return `${actor} upvoted your feedback.`;
+    default:
+      return `${actor} interacted with your content.`;
+  }
+}
+
+function formatNotificationDate(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
 
 export default function Navbar({
   search,
@@ -24,8 +60,158 @@ export default function Navbar({
   onNewPost,
   onAdmin,
   onProfile,
+  onOpenPost,
 }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationError, setNotificationError] = useState("");
+
+  const notificationPanelRef = useRef(null);
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
+
+    try {
+      const result = await api.get("/notifications/unread-count");
+      setUnreadCount(Number(result.unreadCount) || 0);
+    } catch (error) {
+      console.error("Unable to fetch notification count:", error);
+    }
+  }, [user]);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+
+    setNotificationsLoading(true);
+    setNotificationError("");
+
+    try {
+      const result = await api.get("/notifications?page=1&limit=20");
+
+      setNotifications(result.notifications || []);
+      setUnreadCount(Number(result.unreadCount) || 0);
+    } catch (error) {
+      setNotificationError(error.message || "Unable to load notifications.");
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setShowNotifications(false);
+      return;
+    }
+
+    fetchUnreadCount();
+  }, [user, fetchUnreadCount]);
+
+  useEffect(() => {
+    if (!showNotifications) return undefined;
+
+    function handleOutsideClick(event) {
+      if (
+        notificationPanelRef.current &&
+        !notificationPanelRef.current.contains(event.target)
+      ) {
+        setShowNotifications(false);
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setShowNotifications(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [showNotifications]);
+
+  const handleToggleNotifications = () => {
+    const nextOpen = !showNotifications;
+
+    setShowNotifications(nextOpen);
+
+    if (nextOpen) {
+      fetchNotifications();
+    }
+  };
+
+  const handleMarkRead = async (notificationId) => {
+    try {
+      await api.patch(`/notifications/${notificationId}/read`);
+
+      setNotifications((current) =>
+        current.map((item) =>
+          item.id === notificationId ? { ...item, isRead: true } : item,
+        ),
+      );
+
+      setUnreadCount((count) => Math.max(0, count - 1));
+    } catch (error) {
+      setNotificationError(error.message || "Unable to update notification.");
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.patch("/notifications/read-all");
+
+      setNotifications((current) =>
+        current.map((item) => ({ ...item, isRead: true })),
+      );
+
+      setUnreadCount(0);
+    } catch (error) {
+      setNotificationError(error.message || "Unable to update notifications.");
+    }
+  };
+
+  const handleDeleteNotification = async (notificationId) => {
+    const notification = notifications.find(
+      (item) => item.id === notificationId,
+    );
+
+    try {
+      await api.delete(`/notifications/${notificationId}`);
+
+      setNotifications((current) =>
+        current.filter((item) => item.id !== notificationId),
+      );
+
+      if (notification && !notification.isRead) {
+        setUnreadCount((count) => Math.max(0, count - 1));
+      }
+    } catch (error) {
+      setNotificationError(error.message || "Unable to delete notification.");
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.isRead) {
+      await handleMarkRead(notification.id);
+    }
+
+    setShowNotifications(false);
+
+    if (notification.post?.id && onOpenPost) {
+      onOpenPost(notification.post.id);
+    }
+  };
 
   const handleLogout = () => {
     setShowLogoutConfirm(false);
@@ -108,6 +294,175 @@ export default function Navbar({
 
             {user ? (
               <div className="flex shrink-0 items-center gap-1 border-l border-slate-200 pl-1.5 dark:border-slate-700 sm:gap-2 sm:pl-3">
+                {/* Notification Center */}
+                <div className="relative" ref={notificationPanelRef}>
+                  <button
+                    type="button"
+                    onClick={handleToggleNotifications}
+                    className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-200 dark:hover:bg-orange-500/10 sm:h-9 sm:w-9"
+                    aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
+                    aria-expanded={showNotifications}
+                    title="Notifications"
+                  >
+                    <Bell size={17} />
+
+                    {unreadCount > 0 && (
+                      <span className="absolute -right-1 -top-1 flex min-h-[17px] min-w-[17px] items-center justify-center rounded-full border-2 border-white bg-orange-500 px-1 text-[9px] font-extrabold leading-none text-white dark:border-[#080C14]">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {showNotifications && (
+                    <div className="fixed left-2 right-2 top-[66px] z-[60] max-h-[min(75vh,620px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 dark:border-slate-700 dark:bg-[#111827] sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-[390px]">
+                      {/* Panel Header */}
+                      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                        <div>
+                          <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                            Notifications
+                          </h2>
+
+                          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                            {unreadCount} unread
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          {unreadCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleMarkAllRead}
+                              className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-bold text-orange-600 transition hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-500/10"
+                            >
+                              <CheckCheck size={14} />
+                              <span>Read all</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setShowNotifications(false)}
+                            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+                            aria-label="Close notifications"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Notification List */}
+                      <div className="max-h-[min(65vh,520px)] overflow-y-auto">
+                        {notificationsLoading ? (
+                          <div className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+                            Loading notifications...
+                          </div>
+                        ) : notificationError ? (
+                          <div className="px-4 py-8 text-center">
+                            <p className="text-sm text-rose-500">
+                              {notificationError}
+                            </p>
+
+                            <button
+                              type="button"
+                              onClick={fetchNotifications}
+                              className="mt-3 rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold text-white hover:bg-orange-600"
+                            >
+                              Try again
+                            </button>
+                          </div>
+                        ) : notifications.length === 0 ? (
+                          <div className="px-4 py-10 text-center">
+                            <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
+                              <Bell size={20} />
+                            </span>
+
+                            <p className="mt-3 text-sm font-bold text-slate-700 dark:text-slate-200">
+                              You're all caught up
+                            </p>
+
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                              New activity on your roasts will appear here.
+                            </p>
+                          </div>
+                        ) : (
+                          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {notifications.map((notification) => (
+                              <li
+                                key={notification.id}
+                                className={`group relative flex gap-3 px-4 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/60 ${
+                                  notification.isRead
+                                    ? "bg-white dark:bg-[#111827]"
+                                    : "bg-orange-50/70 dark:bg-orange-500/[0.06]"
+                                }`}
+                              >
+                                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400">
+                                  {notification.type === "post_comment" ? (
+                                    <MessageSquare size={16} />
+                                  ) : (
+                                    <ThumbsUp size={16} />
+                                  )}
+                                </span>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleNotificationClick(notification)
+                                  }
+                                  className="min-w-0 flex-1 text-left"
+                                >
+                                  <p className="pr-1 text-xs leading-relaxed text-slate-800 dark:text-slate-100">
+                                    {getNotificationMessage(notification)}
+                                  </p>
+
+                                  {notification.post?.title && (
+                                    <p className="mt-1 truncate text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                      {notification.post.title}
+                                    </p>
+                                  )}
+
+                                  <p className="mt-1.5 text-[10px] text-slate-400 dark:text-slate-500">
+                                    {formatNotificationDate(
+                                      notification.createdAt,
+                                    )}
+                                  </p>
+                                </button>
+
+                                <div className="flex shrink-0 flex-col items-center gap-1">
+                                  {!notification.isRead && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleMarkRead(notification.id)
+                                      }
+                                      className="rounded-md p-1 text-slate-400 transition hover:bg-orange-100 hover:text-orange-600 dark:hover:bg-orange-500/10 dark:hover:text-orange-400"
+                                      title="Mark as read"
+                                      aria-label="Mark notification as read"
+                                    >
+                                      <Check size={14} />
+                                    </button>
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleDeleteNotification(notification.id)
+                                    }
+                                    className="rounded-md p-1 text-slate-400 opacity-100 transition hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 sm:opacity-0 sm:group-hover:opacity-100"
+                                    title="Delete notification"
+                                    aria-label="Delete notification"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Admin */}
                 {user.isAdmin && (
                   <button
@@ -127,6 +482,7 @@ export default function Navbar({
                   <p className="max-w-[110px] truncate text-xs font-bold text-slate-800 dark:text-slate-100">
                     @{user.username}
                   </p>
+
                   <p className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
                     Developer
                   </p>
@@ -224,7 +580,6 @@ export default function Navbar({
             className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-[#111827]"
             onClick={(event) => event.stopPropagation()}
           >
-            {/* Close */}
             <button
               type="button"
               onClick={() => setShowLogoutConfirm(false)}
@@ -234,12 +589,10 @@ export default function Navbar({
               <X size={18} />
             </button>
 
-            {/* Icon */}
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400">
               <LogOut size={26} />
             </div>
 
-            {/* Content */}
             <h2
               id="logout-title"
               className="text-center text-xl font-extrabold text-slate-900 dark:text-white"
@@ -251,7 +604,6 @@ export default function Navbar({
               Are you sure you want to log out of your StackRoast account?
             </p>
 
-            {/* Buttons */}
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
